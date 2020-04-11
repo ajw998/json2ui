@@ -1,17 +1,29 @@
 const hasComplexConditional = require('./utils/hasComplexConditional');
 const isConstant = require('./utils/isConstant');
 const searchComplexKey = require('./utils/searchComplexKey');
+
 class JSON2UIBase {
+    /**
+      * Create new UI schema from JSON schema
+      * @param {object} schema JSON schema
+      * @param {object} opts Additional options
+      */
     constructor({ schema=null, opts} = {}) {
 
         /* JSON schema */
-        this.schema = schema;
+        this.schema = JSON.parse(JSON.stringify(schema));
 
         /* Options */
         this.opts = this.preprocessOpts(opts);
 
+        /* Meta details */
+        this.meta = this.processMeta(this.schema);
+
         /* Fields UI info */
         this.fields = null;
+
+        /* Required fields */
+        this.required = [];
     }
 
     preprocessOpts(opts) {
@@ -22,6 +34,11 @@ class JSON2UIBase {
         return preprocessedOpts;
     }
 
+    /**
+     * Preprocess field information
+     * @param {object} field Field schema
+     * @return {object} Preprocessed information
+     */
     preprocessField(field) {
         if (typeof field !== 'object') {return}
 
@@ -65,8 +82,46 @@ class JSON2UIBase {
 
     }
 
-    processFields(field) {
+    /**
+    * Compose common properties for all field classes
+    * These are properties that provides information to the field, and usually
+    * contains information extracted from `Annotations` properties.
+    * An exception is made to `default` property as it has functional usage.
+    * See https://json-schema.org/understanding-json-schema/reference/generic.html#annotations
+    * @param {object} field  Parsed schema
+    * @param {object} id Used to identify the field
+    * @returns {object} Common properties
+    */
+    processCommonProps(field, id='') {
+        return {
+            description: field.description || '',
+            example: field.example || [],
+            fieldKey: field.$id || '',
+            id,
+            title: field.title || '',
+        };
+    }
 
+    processMeta(schema) {
+        return {
+            description: schema.description || '',
+            title: schema.title || '',
+        };
+    }
+
+    processFields(field, id) {
+        if (typeof field !== 'object') {return}
+
+        const commonProps = this.processCommonProps(field, id);
+
+        const required = this.required.includes(id);
+
+        // Compute structure
+        // Get field class
+        return {
+            ...commonProps,
+            required
+        };
     }
 }
 
