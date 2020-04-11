@@ -1,0 +1,7 @@
+{
+	"extends": "@ajw998/eslint-config",
+	"env": {
+		"es6": true	
+	}
+}
+
