@@ -1,3 +1,4 @@
+const getFieldClass = require('./utils/getFieldClass');
 const hasComplexConditional = require('./utils/hasComplexConditional');
 const isConstant = require('./utils/isConstant');
 const searchComplexKey = require('./utils/searchComplexKey');
@@ -11,7 +12,7 @@ class JSON2UIBase {
     constructor({ schema=null, opts} = {}) {
 
         /* JSON schema */
-        this.schema = JSON.parse(JSON.stringify(schema));
+        this.schema = schema && JSON.parse(JSON.stringify(schema));
 
         /* Options */
         this.opts = this.preprocessOpts(opts);
@@ -30,12 +31,13 @@ class JSON2UIBase {
         const preprocessedOpts = { ...opts };
 
         // Read UI Schema overrides
+        // Read InputTypeMap overrides
 
         return preprocessedOpts;
     }
 
     /**
-     * Preprocess field information
+     * Preprocesses field information
      * @param {object} field Field schema
      * @return {object} Preprocessed information
      */
@@ -83,7 +85,7 @@ class JSON2UIBase {
     }
 
     /**
-    * Compose common properties for all field classes
+    * Composes common properties for all field classes
     * These are properties that provides information to the field, and usually
     * contains information extracted from `Annotations` properties.
     * An exception is made to `default` property as it has functional usage.
@@ -93,6 +95,8 @@ class JSON2UIBase {
     * @returns {object} Common properties
     */
     processCommonProps(field, id='') {
+        if (typeof field !== 'object') {return}
+
         return {
             description: field.description || '',
             example: field.example || [],
@@ -103,22 +107,33 @@ class JSON2UIBase {
     }
 
     processMeta(schema) {
+        if (typeof schema !== 'object') {return}
+
         return {
             description: schema.description || '',
             title: schema.title || '',
         };
     }
 
+    /**
+      * Creates a UI property object for a given field
+      * @param {object} field JSON field
+      * @param {string} id JSON field id
+      * @return {object} Field UI schema
+      */
+
     processFields(field, id) {
         if (typeof field !== 'object') {return}
 
-        const commonProps = this.processCommonProps(field, id);
+        const preprocessedInfo = this.preprocessField(field);
 
+        // Field UI Properties
+        const fieldClass = getFieldClass(preprocessedInfo);
+        const commonProps = this.processCommonProps(field, id);
         const required = this.required.includes(id);
 
-        // Compute structure
-        // Get field class
         return {
+            class: fieldClass,
             ...commonProps,
             required
         };
