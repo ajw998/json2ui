@@ -44,10 +44,10 @@ class JSON2UIBase {
     }
 
     /**
-   * Preprocesses field information
-   * @param {object} field Field schema
-   * @return {object} Preprocessed information
-   */
+      * Preprocesses field information
+      * @param {object} field Field schema
+      * @return {object} Preprocessed information
+      */
     preprocessField(field) {
         if (typeof field !== 'object') {return}
 
@@ -123,11 +123,11 @@ class JSON2UIBase {
     }
 
     /**
-  * Creates a UI property object for a given field
-  * @param {object} field JSON field
-  * @param {string} id JSON field id
-  * @return {object} Field UI schema
-  */
+      * Creates a UI property object for a given field
+      * @param {object} field JSON field
+      * @param {string} id JSON field id
+      * @return {object} Field UI schema
+      */
     processField(field, id) {
         if (typeof field !== 'object') {return}
 
@@ -145,12 +145,34 @@ class JSON2UIBase {
             uiInfo.props = this.composeSimpleProps(field);
         }
 
-        if (fieldClass === 'compound') { uiInfo.fields =
-          field.properties && Object.entries(field.properites)
-              .map(([k, v]) => { return this.composeSimpleProps(v, k);
-              }) || []; }
+        // A compound field is a collection of simple fields.
+        // It implies there are more than one associated field. We therefore
+        // search for the `properties` key inside the JSON schema and compose
+        // the UI fields from there.
+        if (fieldClass === 'compound') {
+            uiInfo.fields = field.properties && Object.entries(field.properites)
+                .map(([k, v]) => {
+                    return this.processField(v, k);
+                }) || [];
+        }
 
+        // A complex field is a combination between compound and conditional fields.
+        if (fieldClass === 'complex') {
+            const complexKey = searchComplexKey(field);
 
+            // TODO - There is probably a more elegant way to write this
+            uiInfo.fields = field.properties && Object.entries(field.properties)
+                .map(([k, v]) => {
+                    return this.composeSimpleProps(v, k);
+                }) || [];
+
+            uiInfo.subfields = field[complexKey].map((item) => {
+                return item.then && Object.entries(item.then.properties)
+                    .map(([k, v]) => {
+                        return this.processField(v, k);
+                    });
+            });
+        }
 
         return {
             class: fieldClass,
@@ -161,10 +183,10 @@ class JSON2UIBase {
     }
 
     /**
-  * Process full JSON schema and return UI schema
-  * @param {object} schema JSON schema
-  * @return {object} UI schema
-  */
+      * Process full JSON schema and return UI schema
+      * @param {object} schema JSON schema
+      * @return {object} UI schema
+      */
     processSchema(schema) {
         const uiSchema = {};
 
@@ -179,21 +201,24 @@ class JSON2UIBase {
     }
 
     /**
-  * Composes UI properites for a given field of `simple` field class
-  * @param {object} field JSON property field
-  * @return {object} UI properties
-  */
+      * Composes UI properites for a given field of `simple` field class
+      * @param {object} field JSON property field
+      * @return {object} UI properties
+      */
     composeSimpleProps(field) {
         if (typeof field !== 'object') {return}
         const props = {};
 
         props.element = getUIElement(field);
 
+        // If the element is input, we return the information
+        // needed to populate input element attributes.
         if (props.element === 'input') {
             props.pattern = field.pattern || null;
             props.inputType = getInputType(field, typeMap);
         }
 
+        // If the element is select, we compose a list of options.
         if (props.element === 'select') {
             props.options = composeSelectOptions(field);
         }
