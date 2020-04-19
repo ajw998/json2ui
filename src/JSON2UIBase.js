@@ -138,7 +138,7 @@ class JSON2UIBase {
         // Field basic UI properties
         const fieldClass = getFieldClass(preprocessedInfo);
         const commonProps = this.processCommonProps(field, id);
-        const required = this.required.includes(id);
+        const required = this.required && this.required.includes(id);
 
         // Field-specific UI properties
         if (fieldClass === 'simple') {
